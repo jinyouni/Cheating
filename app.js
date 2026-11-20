@@ -26,15 +26,16 @@ const solutionBody = document.getElementById('solutionBody');
 
 const settingsModal = document.getElementById('settingsModal');
 const apiKeyInput = document.getElementById('apiKeyInput');
-const modelInput = document.getElementById('modelInput');
+const modelSelect = document.getElementById('modelSelect');
+const customModelInput = document.getElementById('customModelInput');
 const toastEl = document.getElementById('toast');
 
 // 로컬스토리지 키 이름
 const STORAGE_API_KEY = 'gemini_problem_solver_api_key';
 const STORAGE_MODEL = 'gemini_problem_solver_model';
 
-// 기본 모델: 사용자가 덜 몰려 안정적이고 빠른 2.5-flash
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+// 기본 모델: 사용자가 요청한 Gemini 3.8 Flash
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 // ==========================================
 // 1. 초기화 및 이벤트 리스너 등록
@@ -45,7 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedModel = localStorage.getItem(STORAGE_MODEL) || DEFAULT_MODEL;
 
   apiKeyInput.value = savedApiKey;
-  modelInput.value = savedModel;
+  
+  // 모델 선택 초기화
+  initModelSelect(savedModel);
 
   // 비디오 속성 사전 설정 (모바일 인라인 자동재생 필수 조건)
   cameraVideo.muted = true;
@@ -65,6 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
   openSettingsBtn.addEventListener('click', showSettingsModal);
   closeSettingsBtn.addEventListener('click', hideSettingsModal);
   saveSettingsBtn.addEventListener('click', saveSettings);
+
+  modelSelect.addEventListener('change', () => {
+    if (modelSelect.value === 'custom') {
+      customModelInput.classList.remove('hidden');
+      customModelInput.focus();
+    } else {
+      customModelInput.classList.add('hidden');
+    }
+  });
 
   // 모바일 화면 터치 시 비디오 멈춤 해제
   videoWrapper.addEventListener('click', () => {
@@ -96,11 +108,29 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function initModelSelect(modelValue) {
+  let matched = false;
+  for (let option of modelSelect.options) {
+    if (option.value === modelValue) {
+      modelSelect.value = modelValue;
+      matched = true;
+      break;
+    }
+  }
+
+  if (!matched) {
+    modelSelect.value = 'custom';
+    customModelInput.value = modelValue;
+    customModelInput.classList.remove('hidden');
+  } else {
+    customModelInput.classList.add('hidden');
+  }
+}
+
 // ==========================================
-// 2. 카메라 제어 (실시간 동영상 프리뷰 최적화)
+// 2. 카메라 제어 (실시간 동영상 프리뷰)
 // ==========================================
 async function startCamera(facingMode = 'environment') {
-  // 이전 스트림 안전하게 종료
   if (currentStream) {
     currentStream.getTracks().forEach(track => {
       try { track.stop(); } catch(e) {}
@@ -108,7 +138,6 @@ async function startCamera(facingMode = 'environment') {
     currentStream = null;
   }
 
-  // 모바일 프리징(멈춤)을 방지하기 위해 과도한 해상도 제한 없이 브라우저 표준 constraints 적용
   const constraints = {
     audio: false,
     video: {
@@ -121,7 +150,6 @@ async function startCamera(facingMode = 'environment') {
     currentStream = stream;
     cameraVideo.srcObject = stream;
 
-    // 메타데이터 로드 완료 후 재생 시작 (모바일 브라우저 멈춤 방지 핵심)
     cameraVideo.onloadedmetadata = () => {
       cameraVideo.play().then(() => {
         cameraResumeOverlay.classList.add('hidden');
@@ -131,7 +159,6 @@ async function startCamera(facingMode = 'environment') {
       });
     };
 
-    // 혹시 onloadedmetadata가 지연될 경우 대비 fallback
     setTimeout(() => {
       if (cameraVideo.paused) {
         cameraVideo.play().catch(() => {
@@ -142,7 +169,6 @@ async function startCamera(facingMode = 'environment') {
 
   } catch (err) {
     console.error('카메라 시작 오류:', err);
-    // 모바일 기본 카메라로 fallback 시도
     try {
       const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       currentStream = basicStream;
@@ -225,7 +251,7 @@ async function onCaptureAndSolve() {
         <h4 style="margin-bottom: 6px; font-size: 1rem;">⚠️ 풀이 요청 중 오류가 발생했습니다</h4>
         <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">${escapeHtml(error.message || 'API 키 또는 네트워크 상태를 확인해주세요.')}</p>
         <p style="font-size: 0.82rem; margin-top: 8px; color: #94a3b8;">
-          💡 <strong>Tip</strong>: 상단 ⚙️ 설정에서 모델을 <code>gemini-2.5-flash</code>로 변경하거나 API 키가 올바른지 확인해보세요.
+          💡 <strong>Tip</strong>: 상단 ⚙️ 설정에서 모델을 <code>gemini-3.8-flash</code>, <code>gemini-3.6-flash</code> 또는 <code>gemini-2.5-flash</code>로 선택하여 변경해보세요.
         </p>
       </div>
     `;
@@ -272,7 +298,7 @@ async function requestGeminiSolve(apiKey, model, base64Image) {
       }
     ],
     generationConfig: {
-      temperature: 0.2, // 정답 정확도를 높이기 위해 낮은 온도로 설정
+      temperature: 0.2,
       maxOutputTokens: 2048
     }
   };
@@ -289,10 +315,10 @@ async function requestGeminiSolve(apiKey, model, base64Image) {
     const errorData = await response.json().catch(() => ({}));
     const message = errorData.error?.message || `HTTP 오류 ${response.status}: ${response.statusText}`;
 
-    // 만약 사용자가 입력한 모델이 없거나 지원되지 않는 모델(404)일 경우, 2.5-flash 또는 1.5-flash로 자동 복구 시도
-    if (response.status === 404 && model !== DEFAULT_MODEL) {
-      console.warn(`[${model}] 모델이 유효하지 않아 기본 모델(${DEFAULT_MODEL})로 자동 재시도합니다...`);
-      return await requestGeminiSolve(apiKey, DEFAULT_MODEL, base64Image);
+    // 만약 사용자가 지정한 모델이 특정 무료 키 엔드포인트에서 404가 날 경우 2.5-flash로 자동 복구
+    if (response.status === 404 && model !== 'gemini-2.5-flash') {
+      console.warn(`[${model}] 모델 호출 실패 (404). gemini-2.5-flash로 자동 재시도합니다...`);
+      return await requestGeminiSolve(apiKey, 'gemini-2.5-flash', base64Image);
     }
 
     throw new Error(`[${model}] 호출 실패: ${message}`);
@@ -312,14 +338,11 @@ async function requestGeminiSolve(apiKey, model, base64Image) {
 // 5. 다음 문제 풀기 (다시 카메라 모드로 복귀)
 // ==========================================
 function onNextProblem() {
-  // 결과 화면 숨기고 카메라 화면 활성화
   resultSection.classList.remove('active');
   cameraSection.classList.add('active');
 
-  // 화면 스크롤 초기화
   resultSection.scrollTop = 0;
 
-  // 비디오가 멈춰있다면 바로 재생
   if (cameraVideo.paused) {
     cameraVideo.play().catch(e => {
       console.warn('복귀 시 재생 실패:', e);
@@ -343,7 +366,10 @@ function hideSettingsModal() {
 
 function saveSettings() {
   const key = apiKeyInput.value.trim();
-  const model = modelInput.value.trim() || DEFAULT_MODEL;
+  let model = modelSelect.value;
+  if (model === 'custom') {
+    model = customModelInput.value.trim() || DEFAULT_MODEL;
+  }
 
   if (!key) {
     showToast('API 키를 입력해주세요.');
@@ -354,7 +380,7 @@ function saveSettings() {
   localStorage.setItem(STORAGE_MODEL, model);
 
   hideSettingsModal();
-  showToast(`설정 완료! 모델: ${model}`);
+  showToast(`모델 설정 완료: ${model}`);
 }
 
 let toastTimeout = null;
