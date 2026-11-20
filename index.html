@@ -29,8 +29,8 @@
     <!-- 메인 카메라 뷰 (동영상 실시간 프리뷰) -->
     <main class="main-container">
       <section id="cameraSection" class="view-section active">
-        <div class="video-wrapper">
-          <video id="cameraVideo" autoplay playsinline muted></video>
+        <div class="video-wrapper" id="videoWrapper">
+          <video id="cameraVideo" autoplay playsinline webkit-playsinline muted></video>
           
           <!-- 시험문제 조준 가이드라인 -->
           <div class="aim-overlay">
@@ -41,6 +41,12 @@
               <span class="corner bottom-right"></span>
               <p class="aim-hint">문제를 사각 영역 안에 비춰주세요</p>
             </div>
+          </div>
+
+          <!-- 카메라 정지 시 터치 재생 안내 오버레이 -->
+          <div id="cameraResumeOverlay" class="camera-resume-overlay hidden">
+            <span class="play-icon">▶️</span>
+            <p>화면을 터치하면 동영상이 시작됩니다</p>
           </div>
         </div>
 
@@ -95,28 +101,32 @@
     <!-- 캡처용 숨김 Canvas -->
     <canvas id="captureCanvas" style="display:none;"></canvas>
 
-    <!-- API 키 설정 모달 -->
+    <!-- API 키 & 모델 설정 모달 -->
     <div id="settingsModal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>🔑 Gemini API 키 설정</h3>
+          <h3>🔑 Gemini 설정</h3>
           <button id="closeSettingsBtn" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
           <p class="info-text">
-            Google AI Studio에서 무료로 발급받은 API 키를 입력해주세요. 입력된 키는 휴대폰 브라우저에만 안전하게 저장됩니다.
+            Google AI Studio 무료 API 키를 등록하세요. 사용자가 몰리지 않는 여유 있는 최신 모델을 선택하거나 직접 입력할 수 있습니다.
           </p>
           <div class="input-group">
             <label for="apiKeyInput">Gemini API Key</label>
             <input type="password" id="apiKeyInput" placeholder="AIzaSy...">
           </div>
           <div class="input-group">
-            <label for="modelSelect">사용할 모델</label>
-            <select id="modelSelect">
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (권장: 초고속 최신)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (안정적)</option>
+            <label for="modelInput">Gemini 모델 선택 / 직접 입력</label>
+            <input type="text" id="modelInput" list="modelOptions" placeholder="직접 입력하거나 선택하세요">
+            <datalist id="modelOptions">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (추천: 최신 초고속/여유로움)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (최고 정확도/추론 특화)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (안정적인 프로 버전)</option>
               <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-            </select>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (표준 기본형)</option>
+            </datalist>
+            <span class="input-hint">사람들이 많이 몰리지 않는 <code>gemini-2.5-flash</code> 또는 <code>gemini-2.5-pro</code>를 권장합니다.</span>
           </div>
           <p class="link-text">
             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
@@ -125,7 +135,7 @@
           </p>
         </div>
         <div class="modal-footer">
-          <button id="saveSettingsBtn" class="action-btn primary full-width">저장하고 시작하기</button>
+          <button id="saveSettingsBtn" class="action-btn primary full-width">저장하고 계속하기</button>
         </div>
       </div>
     </div>
