@@ -1,0 +1,10 @@
+# Build and temporary files
+bin/
+obj/
+*.user
+.vs/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db

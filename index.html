@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AI 시험문제 풀이 도우미</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Markdown 렌더링 라이브러리 (풀이 텍스트 가독성 향상) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 헤더 -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">📐</span>
+        <h1>AI 문제 해결사</h1>
+      </div>
+      <div class="header-actions">
+        <button id="switchCameraBtn" class="icon-btn" title="카메라 전환" aria-label="카메라 전환">
+          🔄
+        </button>
+        <button id="openSettingsBtn" class="icon-btn" title="API 설정" aria-label="API 설정">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- 메인 카메라 뷰 (동영상 실시간 프리뷰) -->
+    <main class="main-container">
+      <section id="cameraSection" class="view-section active">
+        <div class="video-wrapper">
+          <video id="cameraVideo" autoplay playsinline muted></video>
+          
+          <!-- 시험문제 조준 가이드라인 -->
+          <div class="aim-overlay">
+            <div class="aim-box">
+              <span class="corner top-left"></span>
+              <span class="corner top-right"></span>
+              <span class="corner bottom-left"></span>
+              <span class="corner bottom-right"></span>
+              <p class="aim-hint">문제를 사각 영역 안에 비춰주세요</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 촬영/전송 컨트롤 바 -->
+        <div class="bottom-control-bar">
+          <button id="captureBtn" class="shutter-btn" type="button">
+            <div class="shutter-inner">
+              <span class="btn-icon">⚡</span>
+              <span class="btn-label">문제 풀기</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- 풀이 결과 뷰 (캡처 이미지 + Gemini 답변창) -->
+      <section id="resultSection" class="view-section">
+        <!-- 캡처된 사진 썸네일 미리보기 -->
+        <div class="preview-banner">
+          <img id="capturedImagePreview" alt="캡처된 문제 사진">
+          <span class="preview-badge">캡처 완료</span>
+        </div>
+
+        <!-- 결과 표시 카드 -->
+        <div class="result-card">
+          <!-- 로딩 상태 -->
+          <div id="loadingIndicator" class="loading-box">
+            <div class="spinner"></div>
+            <p class="loading-title">제미나이가 문제를 분석하고 있습니다...</p>
+            <p class="loading-sub">문제를 읽고 정답과 해설을 정리하는 중입니다.</p>
+          </div>
+
+          <!-- 답변 출력 영역 -->
+          <div id="solutionBox" class="solution-content hidden">
+            <div class="solution-header">
+              <span class="badge success">풀이 완료</span>
+              <h2 id="solutionTitle">💡 문제 풀이 & 정답</h2>
+            </div>
+            <div id="solutionBody" class="markdown-body"></div>
+          </div>
+        </div>
+
+        <!-- 하단: 다음 문제 풀기 (다시 카메라로 복귀) -->
+        <div class="bottom-control-bar result-bottom-bar">
+          <button id="nextProblemBtn" class="action-btn primary" type="button">
+            <span class="btn-icon">📷</span>
+            <span>다음 문제 풀기 (카메라 복귀)</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- 캡처용 숨김 Canvas -->
+    <canvas id="captureCanvas" style="display:none;"></canvas>
+
+    <!-- API 키 설정 모달 -->
+    <div id="settingsModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>🔑 Gemini API 키 설정</h3>
+          <button id="closeSettingsBtn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="info-text">
+            Google AI Studio에서 무료로 발급받은 API 키를 입력해주세요. 입력된 키는 휴대폰 브라우저에만 안전하게 저장됩니다.
+          </p>
+          <div class="input-group">
+            <label for="apiKeyInput">Gemini API Key</label>
+            <input type="password" id="apiKeyInput" placeholder="AIzaSy...">
+          </div>
+          <div class="input-group">
+            <label for="modelSelect">사용할 모델</label>
+            <select id="modelSelect">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (권장: 초고속 최신)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (안정적)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            </select>
+          </div>
+          <p class="link-text">
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+              👉 무료 API 키 발급받기 (Google AI Studio)
+            </a>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button id="saveSettingsBtn" class="action-btn primary full-width">저장하고 시작하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 오류 안내 토스트 -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
